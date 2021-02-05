@@ -9,10 +9,32 @@
 	<include file="$(find monsterborg_navigation)/launch/map_server.launch"/>
 
 	<!-- EKF localization -->
-	<include file="$(find monsterborg_navigation)/launch/ekf_localization.launch"/>
+	<!-- Launch ekf localization for each robot under seperate namespace -->
+	<group ns = "robot1">
+		<param name="tf_prefix" value="robot1_tf" />
+		<include file="$(find monsterborg_navigation)/launch/ekf_localization.launch"/>
+	</group>
+	<group ns = "robot2">
+		<param name="tf_prefix" value="robot2_tf" />
+		<include file="$(find monsterborg_navigation)/launch/ekf_localization.launch"/>
+	</group>
+
 
 	<!-- move_base -->
-	<include file="$(find monsterborg_navigation)/launch/move_base.launch"/>
+	<!-- Launch move_base for each robot under seperate namespace -->
+	<group ns = "robot1">
+		<param name="tf_prefix" value="robot1_tf" />
+	    <param name="amcl/initial_pose_x" value="-1" />
+	    <param name="amcl/initial_pose_y" value="1" />
+		<include file="$(find monsterborg_navigation)/launch/move_base.launch"/>
+	</group>
+
+	<group ns = "robot2">
+		<param name="tf_prefix" value="robot2_tf" />
+	    <param name="amcl/initial_pose_x" value="-1" />
+	    <param name="amcl/initial_pose_y" value="1" />
+		<include file="$(find monsterborg_navigation)/launch/move_base.launch"/>
+	</group>
 
 	<!-- Launch rviz for visualization purposes-->
 	<node type='rviz' name='rviz' pkg='rviz' args='-d $(find monsterborg_navigation)/config/move_base.rviz' /> 
