@@ -1,0 +1,64 @@
+<?xml version="1.0"?>
+
+<launch> 
+
+	<!-- Include the file path for empty world -->
+        <include file="$(find gazebo_ros)/launch/empty_world.launch">
+        <arg name="world_name" value="$(find monsterborg_description)/worlds/monsterborg.world"/>
+	</include>
+
+	<!-- ***************************************************************************** --> 
+
+	<!-- map_server -->
+	<!-- ***************************************************************************** --> 
+	<!-- Launch the map_server node --> 
+	<node pkg='map_server' type='map_server' name='map_server' args='$(find monsterborg_navigation)/map/empty_map.yaml'>
+	<param name='frame_id' value='map'/> 
+	</node> 
+
+	<!-- ***************************************************************************** --> 
+	<group ns="r1">
+	<include file="$(find monsterborg_navigation)/launch/launch_one.launch">
+	<arg name="robot_namespace" value="r1"/>
+	<arg name="robot_name" value="robot1"/> 
+	<arg name="x" value="0.0"/>
+  	<arg name="y" value="0.0"/>
+ 	<arg name="z" value="0.5"/>
+	</include>
+	</group>
+	<!-- ***************************************************************************** --> 
+
+	<group ns="r2">
+	<include file="$(find monsterborg_navigation)/launch/launch_one.launch">
+	<arg name="robot_namespace" value="r2"/>
+	<arg name="robot_name" value="robot2"/> 
+	<arg name="x" value="0.0"/>
+  	<arg name="y" value="-1.0"/>
+ 	<arg name="z" value="0.5"/>
+	</include>
+	</group>
+
+	<!-- ***************************************************************************** --> 
+
+	<group ns="r3">
+	<include file="$(find monsterborg_navigation)/launch/launch_one.launch">
+	<arg name="robot_namespace" value="r3"/>
+	<arg name="robot_name" value="robot3"/> 
+	<arg name="x" value="0.0"/>
+  	<arg name="y" value="1.0"/>
+ 	<arg name="z" value="0.5"/>
+	</include>
+	</group>
+
+
+<!--
+<arg name="node_start_delay" default="5.0" />  
+<node name="listener" pkg="roscpp_tutorials" type="listener" launch-prefix="bash -c 'sleep $(arg node_start_delay); $0 $@' " />
+-->
+
+	<!-- Launch rviz for visualization purposes-->
+	<node type='rviz' name='rviz' pkg='rviz' args='-d $(find monsterborg_navigation)/config/multi.rviz' />
+
+</launch> 
+
+

@@ -265,16 +265,18 @@
 <!-- Differential Drive -->
 	<gazebo>
     	<plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
-      		<robotNamespace>/</robotNamespace>
+      		<robotNamespace>$(arg robot_namespace)</robotNamespace>
+      		<!-- <robotNamespace>/</robotNamespace>  -->
     	</plugin>
  	</gazebo>
 
 	<gazebo>
         <plugin name="imu_controller" filename="libhector_gazebo_ros_imu.so">
-            <robotNamespace>/</robotNamespace>
+            <robotNamespace>$(arg robot_namespace)</robotNamespace>
+	    <frameId>$(arg tfpre)/base_link</frameId>
             <updateRate>50.0</updateRate>
             <bodyName>base_link</bodyName>
-            <topicName>imu/data</topicName>
+            <topicName>/$(arg robot_namespace)/imu/data</topicName>
             <accelDrift>0.005 0.005 0.005</accelDrift>
             <accelGaussianNoise>0.005 0.005 0.005</accelGaussianNoise>
             <rateDrift>0.005 0.005 0.005 </rateDrift>
@@ -288,11 +290,11 @@
   	<gazebo>
         <plugin name="gps_controller" filename="libhector_gazebo_ros_gps.so">
             <updateRate>10</updateRate>
-            <robotNamespace>/</robotNamespace>
+            <robotNamespace>$(arg robot_namespace)</robotNamespace>
             <bodyName>base_link</bodyName>
-            <frameId>base_link</frameId>
-            <topicName>/navsat/fix</topicName>
-            <velocityTopicName>/navsat/vel</velocityTopicName>
+            <frameId>$(arg tfpre)/base_link</frameId>
+            <topicName>/$(arg robot_namespace)/navsat/fix</topicName>
+            <velocityTopicName>/$(arg robot_namespace)/navsat/vel</velocityTopicName>
             <referenceLatitude>51.423359</referenceLatitude>
             <referenceLongitude>-2.671641</referenceLongitude>
             <referenceHeading>0</referenceHeading>
@@ -328,8 +330,9 @@
         </noise>
       </ray>
       <plugin name="gazebo_ros_head_hokuyo_controller" filename="libgazebo_ros_laser.so">
-        <topicName>/laser_scan</topicName>
+        <topicName>/$(arg robot_namespace)/laser_scan</topicName>
         <frameName>laser</frameName>
+	<robotNamespace>$(arg robot_namespace)</robotNamespace>
       </plugin>
     </sensor>
   </gazebo>

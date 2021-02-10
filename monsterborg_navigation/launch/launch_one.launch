@@ -1,0 +1,118 @@
+<?xml version="1.0"?>
+
+<launch> 
+
+	<arg name="robot_namespace" default="r0"/>
+	<!-- Generate the tf_prefix from the namespace -->
+	<arg name="tfpre" default="$(arg robot_namespace)_tf" />
+    	<!-- Put value on the parameter server in the group's namespace -->
+    	<param name="tf_prefix" value="$(arg robot_namespace)_tf" />
+
+	<!-- Arguments for Gazebo --> 
+
+  	<arg name="urdf_robot_file" value="$(find monsterborg_description)/urdf/monsterborg.urdf" />
+
+	<arg name="x" default="0.0"/>
+  	<arg name="y" default="0.0"/>
+ 	<arg name="z" default="0.5"/>
+	<arg name="robot_name" default="monsterborg"/> 
+
+	<!-- Loads the URDF in the parameter server under the variable 'robot_description' -->
+	<!-- Spawns the model in Gazebo and loads all necessary controllers + loads differential drive -->
+	<!-- ***************************************************************************** --> 
+	<!-- Loads the URDF in a namespaced parameter server variable 'robot_description' -->
+    	<param name="robot_description" command="$(find xacro)/xacro '$(find monsterborg_description)/urdf/monsterborg.urdf'
+	--inorder
+        robot_namespace:=$(arg robot_namespace)
+        tfpre:=$(arg tfpre)
+	"/>
+
+	<!-- Node to spawn the robot in Gazebo --> 
+	<node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen"
+   	args="-urdf -x $(arg x) -y $(arg y) -z $(arg z) -model $(arg robot_name) -param robot_description"/>
+	<!-- ***************************************************************************** -->
+
+   	<!-- Launch the robot_state_publisher to broadcast transforms to '/tf' -->
+    	<node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn='false' output="screen">
+	</node>
+
+    	<!-- Here we spawn (load and launch) a controller. The key thing we need to do is to set the 
+        "base_frame_id" of the differential_drive controller to include the tf_pre so that our tf trees work out.   
+        So, we load the default control configuration and then overwrite the base_frame_id -->
+    	<!-- Load the joint controller configuration-->
+  	<rosparam command="load" file="$(find monsterborg_control)/config/diff_drive_control.yaml" />
+    	<rosparam param="differential_drive/base_frame_id" subst_value="True">$(arg tfpre)/base_link</rosparam>
+    	<!-- Load the controllers -->
+    	<node name="controller_spawner" pkg="controller_manager" type="spawner" output='screen' 
+        args="joint_state_controller differential_drive" />
+ 
+	<!-- ***************************************************************************** --> 
+
+	<!-- EKF localization -->
+	<!-- ***************************************************************************** --> 
+	<node pkg='robot_localization' type='navsat_transform_node' name='navsat_transform_node' respawn='true'>
+	<param name='magnetic_declination_radians' value='0.012749'/>
+	<param name='zero_altitude' value='0'/>
+	<param name='yaw_offset' value='1.57080'/>
+	<!-- Publish the robot's GPS coordinates transformed from the world frame (/odom frame) to the topic '/gps/filtered' --> 
+	<param name='publish_filtered_gps' value='false'/>
+	<!-- Publish the transform utm-> world_frame (/odom frame) --> 
+	<param name='broadcast_utm_transform' value='true'/>
+	<param name='broadcast_utm_transform_as_parent_frame' value='true'/> 
+	<!-- <remap from='odom' to='/$(arg tfpre)/odom'/> -->
+	<!-- Specifying the global frame ORIGIN (/odom - robot's starting position) -->
+        <!-- param name="wait_for_datum" value="true"/-->
+        <!-- rosparam param="datum">[51.336496, -2.784524, 0.0, odom, base_link]</rosparam -->
+	<!-- navsat_transform_node subscribing to namespace and project-specific topic --> 
+	<remap from='gps/fix' to='/$(arg robot_namespace)/navsat/fix'/>
+	</node>
+	<!-- ***************************************************************************** --> 
+
+	<node pkg='robot_localization' type='ekf_localization_node' name='ekf_odom_node' clear_params='true'> 
+	<rosparam command='load' file='$(find monsterborg_navigation)/params/ekf_params.yaml'/> 
+	<!--<rosparam param="base_link_frame" subst_value="True">$(arg tfpre)/base_link</rosparam>
+	<rosparam param="odom_frame" subst_value="True">$(arg tfpre)/odom</rosparam> -->
+	<rosparam param="imu0" subst_value="True">/$(arg robot_namespace)/imu/data</rosparam>
+	<rosparam param="odom0" subst_value="True">/$(arg robot_namespace)/odometry/gps</rosparam>
+	<!-- overwrite to include tf prefix (this is not necessary for some reason but is for move_base -->
+	<!-- <rosparam param="map_frame" subst_value="True">$(arg tfpre)/map</rosparam> -->
+	<!-- <rosparam param="odom_frame" subst_value="True">$(arg tfpre)/odom</rosparam> -->
+	<!-- <rosparam param="base_link_frame" subst_value="True">$(arg tfpre)/base_link</rosparam> -->
+
+	</node> 
+	<!-- ***************************************************************************** --> 
+
+	<!-- move_base -->
+	<!-- ***************************************************************************** --> 
+	<!-- Launching the move_base node that sends commands (geometry_msgs/Twist) to the topic /cmd_vel --> 
+	<node pkg='move_base' type='move_base' name='move_base' respawn='false'>
+	<rosparam command='load' ns='global_costmap' file='$(find monsterborg_navigation)/params/costmap_common_params.yaml'/> 
+	<rosparam command='load' ns='local_costmap' file='$(find monsterborg_navigation)/params/costmap_common_params.yaml'/>
+	<rosparam command='load' file='$(find monsterborg_navigation)/params/local_costmap_params.yaml'/>
+	<rosparam command='load' file='$(find monsterborg_navigation)/params/global_costmap_params.yaml'/>
+	<rosparam command='load' file='$(find monsterborg_navigation)/params/base_local_planner_params.yaml'/>
+
+	<!-- overwrite to include tf prefix -->
+	<rosparam param="global_costmap/robot_base_frame" subst_value="True">$(arg tfpre)/base_link</rosparam>
+	<rosparam param="local_costmap/robot_base_frame" subst_value="True">$(arg tfpre)/base_link</rosparam>
+	<rosparam param="global_costmap/global_frame" subst_value="True">$(arg tfpre)/odom</rosparam>
+	<rosparam param="local_costmap/global_frame" subst_value="True">$(arg tfpre)/odom</rosparam>
+
+	<rosparam param="global_costmap/obstacle_layer/laser_scan_sensor/sensor_frame" subst_value="True">$(arg tfpre)/laser</rosparam>
+	<rosparam param="local_costmap/obstacle_layer/laser_scan_sensor/sensor_frame" subst_value="True">$(arg tfpre)/laser</rosparam>
+	<rosparam param="global_costmap/obstacle_layer/laser_scan_sensor/topic" subst_value="True">/$(arg robot_namespace)/laser_scan</rosparam>
+	<rosparam param="local_costmap/obstacle_layer/laser_scan_sensor/topic" subst_value="True">/$(arg robot_namespace)/laser_scan</rosparam>
+
+	<!-- move_base automatically publishes to the topic 'cmd_vel', hence must remap due to differential_drive plugin -->
+	<!-- move_base automatically subscribes to the topic 'odom', ekf_localization publishes to /odometry/filtered -->
+	<remap from="map" to="/map" />
+	<remap from="cmd_vel" to="/$(arg robot_namespace)/differential_drive/cmd_vel" /> 
+	<remap from="odom" to="/$(arg robot_namespace)/odometry/filtered" /> 
+	</node> 
+	<!-- ***************************************************************************** --> 
+
+ 
+
+</launch> 
+
+
